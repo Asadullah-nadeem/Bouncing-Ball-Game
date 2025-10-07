@@ -40,9 +40,11 @@ public class GamePanel extends JPanel {
     // Obstacles
     private ArrayList<Rectangle> bricks;
 
-    // Menu state
+    // Menu states
     private int selectedMenuItem;
     private final String[] menuItems = {"Play", "About", "Exit"};
+    private int selectedPauseItem;
+    private final String[] pauseMenuItems = {"Resume", "Restart Level", "Main Menu"};
 
     // Image assets
     private ArrayList<Image> ballImages;
@@ -81,6 +83,7 @@ public class GamePanel extends JPanel {
         gameState = GameState.MENU;
         lastScore = 0;
         selectedMenuItem = 0;
+        selectedPauseItem = 0;
         selectedBallIndex = 0;
 
         timer = new Timer(10, e -> gameLoop());
@@ -140,9 +143,12 @@ public class GamePanel extends JPanel {
                 drawAbout(g);
                 break;
             case PLAYING:
+            case PAUSED:
             case GAME_OVER:
                 drawGame(g);
-                if (gameState == GameState.GAME_OVER) {
+                if (gameState == GameState.PAUSED) {
+                    drawPauseMenu(g);
+                } else if (gameState == GameState.GAME_OVER) {
                     drawGameOver(g);
                 }
                 break;
@@ -254,10 +260,12 @@ public class GamePanel extends JPanel {
         metrics = g.getFontMetrics();
         String line1 = "A simple brick breaker game created using Java Swing.";
         String line2 = "Use Arrow Keys or A/D to move the paddle.";
-        String line3 = "Press Enter or ESC to return to the menu.";
+        String line3 = "Press 'P' during the game to pause.";
+        String line4 = "Press Enter or ESC to return to the menu from other screens.";
         g.drawString(line1, (GameConstants.PANEL_WIDTH - metrics.stringWidth(line1)) / 2, 200);
         g.drawString(line2, (GameConstants.PANEL_WIDTH - metrics.stringWidth(line2)) / 2, 240);
         g.drawString(line3, (GameConstants.PANEL_WIDTH - metrics.stringWidth(line3)) / 2, 280);
+        g.drawString(line4, (GameConstants.PANEL_WIDTH - metrics.stringWidth(line4)) / 2, 320);
     }
 
     private void drawGameOver(Graphics g) {
@@ -280,6 +288,35 @@ public class GamePanel extends JPanel {
         g.setColor(Color.WHITE);
         g.setFont(font);
         g.drawString(restartMsg, (GameConstants.PANEL_WIDTH - metrics.stringWidth(restartMsg)) / 2, GameConstants.PANEL_HEIGHT / 2 + 50);
+    }
+
+    private void drawPauseMenu(Graphics g) {
+        // Draw a semi-transparent overlay to dim the background
+        g.setColor(new Color(0, 0, 0, 150));
+        g.fillRect(0, 0, GameConstants.PANEL_WIDTH, GameConstants.PANEL_HEIGHT);
+
+        // Draw the menu background box
+        int boxWidth = 300;
+        int boxHeight = 250;
+        int x = (GameConstants.PANEL_WIDTH - boxWidth) / 2;
+        int y = (GameConstants.PANEL_HEIGHT - boxHeight) / 2;
+        g.setColor(new Color(40, 40, 40));
+        g.fillRect(x, y, boxWidth, boxHeight);
+
+        // Draw the "Paused" title
+        g.setColor(Color.YELLOW);
+        g.setFont(new Font("Arial", Font.BOLD, 50));
+        FontMetrics metrics = g.getFontMetrics();
+        String pauseMsg = "Paused";
+        g.drawString(pauseMsg, (GameConstants.PANEL_WIDTH - metrics.stringWidth(pauseMsg)) / 2, y + 60);
+
+        // Draw the pause menu options
+        g.setFont(new Font("Arial", Font.PLAIN, 28));
+        for (int i = 0; i < pauseMenuItems.length; i++) {
+            g.setColor(i == selectedPauseItem ? Color.YELLOW : Color.WHITE);
+            metrics = g.getFontMetrics();
+            g.drawString(pauseMenuItems[i], (GameConstants.PANEL_WIDTH - metrics.stringWidth(pauseMenuItems[i])) / 2, y + 120 + i * 40);
+        }
     }
 
     private void moveBall() {
@@ -354,6 +391,13 @@ public class GamePanel extends JPanel {
                 break;
             case PLAYING:
                 handlePlayingKeyPress(key);
+                if (key == KeyEvent.VK_P) {
+                    selectedPauseItem = 0; // Reset selection to "Resume"
+                    gameState = GameState.PAUSED;
+                }
+                break;
+            case PAUSED:
+                handlePausedKeyPress(key);
                 break;
             case GAME_OVER:
             case ABOUT:
@@ -396,6 +440,41 @@ public class GamePanel extends JPanel {
         }
     }
 
+    private void handlePausedKeyPress(int key) {
+        if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) {
+            selectedPauseItem = (selectedPauseItem - 1 + pauseMenuItems.length) % pauseMenuItems.length;
+        }
+        if (key == KeyEvent.VK_DOWN) {
+            selectedPauseItem = (selectedPauseItem + 1) % pauseMenuItems.length;
+        }
+        if (key == KeyEvent.VK_P) { // Allow 'P' to resume directly
+            gameState = GameState.PLAYING;
+        }
+        if (key == KeyEvent.VK_ENTER) {
+            switch (selectedPauseItem) {
+                case 0: // Resume
+                    gameState = GameState.PLAYING;
+                    break;
+                case 1: // Restart Level
+                    lives--;
+                    if (lives <= 0) {
+                        gameState = GameState.GAME_OVER;
+                        lastScore = score;
+                    } else {
+                        resetBallAndPaddle();
+                        gameState = GameState.PLAYING;
+                    }
+                    break;
+                case 2: // Main Menu
+                    gameState = GameState.MENU;
+                    break;
+            }
+        }
+        if (key == KeyEvent.VK_ESCAPE) {
+            gameState = GameState.PLAYING; // Also allow ESC to resume
+        }
+    }
+
     private void handlePlayingKeyPress(int key) {
         if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
             leftPressed = true;
@@ -415,3 +494,4 @@ public class GamePanel extends JPanel {
         }
     }
 }
+
