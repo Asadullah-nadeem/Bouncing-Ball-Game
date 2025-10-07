@@ -61,9 +61,12 @@ public class LevelGenerator {
         } else {
             // Chance for 2-health and 3-health bricks in later levels
             double roll = random.nextDouble();
-            if (roll < 0.1) return 3; // 10% chance for 3 health
-            if (roll < 0.3) return 2; // 20% chance for 2 health
-            return 1; // 70% chance for 1 health
+            // 10% chance for 3 health
+            if (roll < 0.1) return 3;
+            // 20% chance for 2 health
+            if (roll < 0.3) return 2;
+            // 70% chance for 1 health
+            return 1;
         }
     }
 
@@ -74,7 +77,8 @@ public class LevelGenerator {
         }
 
         // If no heart drops, then check for a score multiplier.
-        if (random.nextDouble() < 0.1) { // 10% chance for a score multiplier
+        if (random.nextDouble() < 0.1) {
+            // 10% chance for a score multiplier
             if (level > 10 && random.nextDouble() < 0.1) return PowerUpType.X16; // Very rare
             if (level > 8 && random.nextDouble() < 0.2) return PowerUpType.X8;
             if (level > 4 && random.nextDouble() < 0.3) return PowerUpType.X4;
