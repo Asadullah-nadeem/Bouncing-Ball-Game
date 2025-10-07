@@ -161,11 +161,9 @@ public class GamePanel extends JPanel {
     }
 
     private void drawGame(Graphics g) {
-        // Paddle draw karo
         g.setColor(Color.BLUE);
         g.fillRect(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT);
 
-        // Ball draw karo
         if (currentBallImage != null) {
             g.drawImage(currentBallImage, ballX, ballY, GameConstants.BALL_DIAMETER, GameConstants.BALL_DIAMETER, this);
         } else {
@@ -173,7 +171,6 @@ public class GamePanel extends JPanel {
             g.fillOval(ballX, ballY, GameConstants.BALL_DIAMETER, GameConstants.BALL_DIAMETER);
         }
 
-        // Bricks draw karo
         for (SpecialBrick brick : bricks) {
             if (brickImage != null) {
                 g.drawImage(brickImage, brick.x, brick.y, brick.width, brick.height, this);
@@ -191,12 +188,10 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // Power-ups draw karo
         for (PowerUp powerUp : powerUps) {
             g.drawImage(powerUp.image, powerUp.x, powerUp.y, powerUp.width, powerUp.height, this);
         }
 
-        // HUD (Score, Level, Lives) draw karo
         drawHUD(g);
     }
 
@@ -221,7 +216,6 @@ public class GamePanel extends JPanel {
         FontMetrics metrics = g.getFontMetrics();
         g.drawString(levelText, GameConstants.PANEL_WIDTH - metrics.stringWidth(levelText) - 10, 25);
 
-        // Active score multiplier dikhao
         if (scoreMultiplier > 1) {
             g.setColor(Color.ORANGE);
             g.setFont(new Font("Arial", Font.BOLD, 24));
@@ -377,19 +371,17 @@ public class GamePanel extends JPanel {
     }
 
     private void updatePowerUps() {
-        // Power-up expiration check karo
         if (scoreMultiplier > 1 && System.currentTimeMillis() > powerUpEndTime) {
             scoreMultiplier = 1;
         }
 
-        // Power-ups ko move karo aur paddle collision check karo
         powerUps.removeIf(powerUp -> {
             powerUp.move();
             if (powerUp.intersects(new Rectangle(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT))) {
                 activatePowerUp(powerUp.type);
                 return true; // List se remove karo
             }
-            return powerUp.y > GameConstants.PANEL_HEIGHT; // Agar screen se neeche chala jaaye toh remove karo
+            return powerUp.y > GameConstants.PANEL_HEIGHT;
         });
     }
 
@@ -415,13 +407,12 @@ public class GamePanel extends JPanel {
         bricks.removeIf(brick -> {
             if (ballRect.intersects(brick)) {
                 ballDy = -ballDy;
-                // hit() method ab decide karega ki brick tootegi ya nahi
                 if (brick.hit()) {
                     score += 10 * scoreMultiplier;
                     if (brick.powerUpType != null) {
                         powerUps.add(new PowerUp(brick.x, brick.y, brick.powerUpType, powerUpImages.get(brick.powerUpType)));
                     }
-                    return true; // Brick ko list se remove karo
+                    return true;
                 }
             }
             return false;
