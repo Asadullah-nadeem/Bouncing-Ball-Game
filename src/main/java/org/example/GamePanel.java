@@ -10,6 +10,7 @@ import java.awt.Rectangle;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Random;
 import javax.swing.JPanel;
 import javax.swing.Timer;
@@ -37,8 +38,11 @@ public class GamePanel extends JPanel {
     private boolean leftPressed = false;
     private boolean rightPressed = false;
 
-    // Obstacles
-    private ArrayList<Rectangle> bricks;
+    // Obstacles and Power-ups
+    private ArrayList<SpecialBrick> bricks;
+    private ArrayList<PowerUp> powerUps;
+    private int scoreMultiplier;
+    private long powerUpEndTime;
 
     // Menu states
     private int selectedMenuItem;
@@ -52,6 +56,7 @@ public class GamePanel extends JPanel {
     private Image brickImage;
     private Image heartImage;
     private Image gameOverImage;
+    private Map<PowerUpType, Image> powerUpImages;
 
     // Ball selection
     private int selectedBallIndex;
@@ -67,6 +72,7 @@ public class GamePanel extends JPanel {
         random = new Random();
 
         ballImages = new ArrayList<>();
+        powerUps = new ArrayList<>();
         loadImages();
 
         addKeyListener(new KeyAdapter() {
@@ -96,6 +102,7 @@ public class GamePanel extends JPanel {
         brickImage = ImageLoader.loadImage("/brick.png");
         heartImage = ImageLoader.loadImage("/heart.png");
         gameOverImage = ImageLoader.loadImage("/gameover.png");
+        powerUpImages = ImageLoader.loadPowerUpImages();
     }
 
     private void startGame() {
@@ -108,6 +115,9 @@ public class GamePanel extends JPanel {
         ballDy = -GameConstants.INITIAL_BALL_SPEED;
 
         bricks = LevelGenerator.generateLevel(level, random);
+        powerUps.clear();
+        scoreMultiplier = 1;
+        powerUpEndTime = 0;
 
         gameState = GameState.PLAYING;
         requestFocusInWindow();
@@ -123,6 +133,7 @@ public class GamePanel extends JPanel {
         if (gameState == GameState.PLAYING) {
             movePaddle();
             moveBall();
+            updatePowerUps();
             checkCollisions();
         }
         repaint();
@@ -169,16 +180,36 @@ public class GamePanel extends JPanel {
         }
 
         // Draw bricks
-        for (Rectangle brick : bricks) {
+        for (SpecialBrick brick : bricks) {
             if (brickImage != null) {
+                // To show damage on image bricks, you'd need separate "damaged" images.
+                // For simplicity, we'll draw a color overlay for damaged bricks.
                 g.drawImage(brickImage, brick.x, brick.y, brick.width, brick.height, this);
+                if (brick.getHealth() < 3) {
+                    g.setColor(new Color(0, 0, 0, 50 * (3 - brick.getHealth()))); // Darken based on damage
+                    g.fillRect(brick.x, brick.y, brick.width, brick.height);
+                }
             } else {
-                g.setColor(Color.GREEN);
+                // Fallback to drawing colored rectangles if images fail to load
+                switch (brick.getHealth()) {
+                    case 1: g.setColor(Color.GREEN); break;
+                    case 2: g.setColor(Color.ORANGE); break;
+                    default: g.setColor(Color.MAGENTA); break; // 3+ health
+                }
                 g.fillRect(brick.x, brick.y, brick.width, brick.height);
             }
         }
 
+        // Draw power-ups
+        for (PowerUp powerUp : powerUps) {
+            g.drawImage(powerUp.image, powerUp.x, powerUp.y, powerUp.width, powerUp.height, this);
+        }
+
         // Draw HUD
+        drawHUD(g);
+    }
+
+    private void drawHUD(Graphics g) {
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 20));
         g.drawString("Score: " + score, 10, 25);
@@ -198,6 +229,15 @@ public class GamePanel extends JPanel {
         String levelText = "Level: " + level;
         FontMetrics metrics = g.getFontMetrics();
         g.drawString(levelText, GameConstants.PANEL_WIDTH - metrics.stringWidth(levelText) - 10, 25);
+
+        // Draw active score multiplier
+        if (scoreMultiplier > 1) {
+            g.setColor(Color.ORANGE);
+            g.setFont(new Font("Arial", Font.BOLD, 24));
+            String multiplierText = scoreMultiplier + "X SCORE!";
+            long timeLeft = (powerUpEndTime - System.currentTimeMillis()) / 1000;
+            g.drawString(multiplierText + " (" + timeLeft + "s)", 10, 50);
+        }
     }
 
     private void drawMenu(Graphics g) {
@@ -291,11 +331,9 @@ public class GamePanel extends JPanel {
     }
 
     private void drawPauseMenu(Graphics g) {
-        // Draw a semi-transparent overlay to dim the background
         g.setColor(new Color(0, 0, 0, 150));
         g.fillRect(0, 0, GameConstants.PANEL_WIDTH, GameConstants.PANEL_HEIGHT);
 
-        // Draw the menu background box
         int boxWidth = 300;
         int boxHeight = 250;
         int x = (GameConstants.PANEL_WIDTH - boxWidth) / 2;
@@ -303,14 +341,12 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(40, 40, 40));
         g.fillRect(x, y, boxWidth, boxHeight);
 
-        // Draw the "Paused" title
         g.setColor(Color.YELLOW);
         g.setFont(new Font("Arial", Font.BOLD, 50));
         FontMetrics metrics = g.getFontMetrics();
         String pauseMsg = "Paused";
         g.drawString(pauseMsg, (GameConstants.PANEL_WIDTH - metrics.stringWidth(pauseMsg)) / 2, y + 60);
 
-        // Draw the pause menu options
         g.setFont(new Font("Arial", Font.PLAIN, 28));
         for (int i = 0; i < pauseMenuItems.length; i++) {
             g.setColor(i == selectedPauseItem ? Color.YELLOW : Color.WHITE);
@@ -349,26 +385,55 @@ public class GamePanel extends JPanel {
         }
     }
 
+    private void updatePowerUps() {
+        // Check for power-up expiration
+        if (scoreMultiplier > 1 && System.currentTimeMillis() > powerUpEndTime) {
+            scoreMultiplier = 1;
+        }
+
+        // Move and check for paddle collision
+        powerUps.removeIf(powerUp -> {
+            powerUp.move();
+            if (powerUp.intersects(new Rectangle(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT))) {
+                activatePowerUp(powerUp.type);
+                return true; // Remove from list
+            }
+            return powerUp.y > GameConstants.PANEL_HEIGHT; // Remove if it falls off-screen
+        });
+    }
+
+    private void activatePowerUp(PowerUpType type) {
+        scoreMultiplier = type.multiplier;
+        powerUpEndTime = System.currentTimeMillis() + GameConstants.POWERUP_DURATION_MS;
+    }
+
     private void checkCollisions() {
-        int paddleY = GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30;
+        Rectangle paddleRect = new Rectangle(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT);
         Rectangle ballRect = new Rectangle(ballX, ballY, GameConstants.BALL_DIAMETER, GameConstants.BALL_DIAMETER);
-        Rectangle paddleRect = new Rectangle(paddleX, paddleY, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT);
 
         if (ballRect.intersects(paddleRect)) {
             ballDy = -Math.abs(ballDy);
         }
 
-        for (int i = 0; i < bricks.size(); i++) {
-            if (ballRect.intersects(bricks.get(i))) {
-                bricks.remove(i);
+        bricks.removeIf(brick -> {
+            if (ballRect.intersects(brick)) {
                 ballDy = -ballDy;
-                score += 10;
-                break;
+                // The hit() method now decides if the brick breaks
+                if (brick.hit()) {
+                    score += 10 * scoreMultiplier;
+                    if (brick.powerUpType != null) {
+                        powerUps.add(new PowerUp(brick.x, brick.y, brick.powerUpType, powerUpImages.get(brick.powerUpType)));
+                    }
+                    return true; // Remove brick from list
+                }
             }
-        }
+            return false;
+        });
 
         if (bricks.isEmpty()) {
             level++;
+            powerUps.clear();
+            scoreMultiplier = 1;
             if (level > 20 && level % 3 == 0) {
                 if (Math.abs(ballDx) < GameConstants.MAX_BALL_SPEED) {
                     ballDx += (ballDx > 0 ? 1 : -1);
@@ -461,6 +526,9 @@ public class GamePanel extends JPanel {
                         gameState = GameState.GAME_OVER;
                         lastScore = score;
                     } else {
+                        bricks = LevelGenerator.generateLevel(level, random);
+                        powerUps.clear();
+                        scoreMultiplier = 1;
                         resetBallAndPaddle();
                         gameState = GameState.PLAYING;
                     }

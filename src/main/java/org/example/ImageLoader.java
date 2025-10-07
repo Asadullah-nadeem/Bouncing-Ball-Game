@@ -2,6 +2,8 @@ package org.example;
 
 import java.awt.Image;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
 import javax.swing.ImageIcon;
 
@@ -39,4 +41,20 @@ public class ImageLoader {
         }
         return images;
     }
+
+    /**
+     * Loads all the power-up images and maps them to their type.
+     * @return A Map of PowerUpType to its loaded Image object.
+     */
+    public static Map<PowerUpType, Image> loadPowerUpImages() {
+        Map<PowerUpType, Image> images = new EnumMap<>(PowerUpType.class);
+        for (PowerUpType type : PowerUpType.values()) {
+            Image img = loadImage(type.imagePath);
+            if (img != null) {
+                images.put(type, img);
+            }
+        }
+        return images;
+    }
 }
+
