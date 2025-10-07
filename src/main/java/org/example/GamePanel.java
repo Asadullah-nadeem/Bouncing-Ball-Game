@@ -53,10 +53,12 @@ public class GamePanel extends JPanel {
     private Image brickImage;
     private Image heartImage;
     private Image gameOverImage;
+    private Image paddleImage; // Paddle image
     private Map<PowerUpType, Image> powerUpImages;
 
     // Ball selection
     private int selectedBallIndex;
+
 
 
     public GamePanel() {
@@ -96,6 +98,7 @@ public class GamePanel extends JPanel {
         brickImage = ImageLoader.loadImage("/brick.png");
         heartImage = ImageLoader.loadImage("/heart.png");
         gameOverImage = ImageLoader.loadImage("/gameover.png");
+        paddleImage = ImageLoader.loadImage("/paddle.png"); // Load paddle image
         powerUpImages = ImageLoader.loadPowerUpImages();
     }
 
@@ -161,8 +164,12 @@ public class GamePanel extends JPanel {
     }
 
     private void drawGame(Graphics g) {
-        g.setColor(Color.BLUE);
-        g.fillRect(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT);
+        if (paddleImage != null) {
+            g.drawImage(paddleImage, paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT, this);
+        } else {
+            g.setColor(Color.BLUE);
+            g.fillRect(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT);
+        }
 
         if (currentBallImage != null) {
             g.drawImage(currentBallImage, ballX, ballY, GameConstants.BALL_DIAMETER, GameConstants.BALL_DIAMETER, this);
@@ -371,15 +378,17 @@ public class GamePanel extends JPanel {
     }
 
     private void updatePowerUps() {
+        // Power-up expiration
         if (scoreMultiplier > 1 && System.currentTimeMillis() > powerUpEndTime) {
             scoreMultiplier = 1;
         }
 
+        // Power-ups
         powerUps.removeIf(powerUp -> {
             powerUp.move();
             if (powerUp.intersects(new Rectangle(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT))) {
                 activatePowerUp(powerUp.type);
-                return true; // List se remove karo
+                return true; // List remove
             }
             return powerUp.y > GameConstants.PANEL_HEIGHT;
         });
@@ -407,12 +416,13 @@ public class GamePanel extends JPanel {
         bricks.removeIf(brick -> {
             if (ballRect.intersects(brick)) {
                 ballDy = -ballDy;
+                // hit() method
                 if (brick.hit()) {
                     score += 10 * scoreMultiplier;
                     if (brick.powerUpType != null) {
                         powerUps.add(new PowerUp(brick.x, brick.y, brick.powerUpType, powerUpImages.get(brick.powerUpType)));
                     }
-                    return true;
+                    return true; // Brick remove
                 }
             }
             return false;
@@ -445,7 +455,7 @@ public class GamePanel extends JPanel {
             case PLAYING:
                 handlePlayingKeyPress(key);
                 if (key == KeyEvent.VK_P) {
-                    selectedPauseItem = 0; // Selection ko "Resume" par reset karo
+                    selectedPauseItem = 0; // Resume
                     gameState = GameState.PAUSED;
                 }
                 break;
@@ -500,7 +510,7 @@ public class GamePanel extends JPanel {
         if (key == KeyEvent.VK_DOWN) {
             selectedPauseItem = (selectedPauseItem + 1) % pauseMenuItems.length;
         }
-        if (key == KeyEvent.VK_P) { // 'P' se direct resume
+        if (key == KeyEvent.VK_P) { // 'P'
             gameState = GameState.PLAYING;
         }
         if (key == KeyEvent.VK_ENTER) {
@@ -527,7 +537,7 @@ public class GamePanel extends JPanel {
             }
         }
         if (key == KeyEvent.VK_ESCAPE) {
-            gameState = GameState.PLAYING; // ESC se bhi resume
+            gameState = GameState.PLAYING; // ESC
         }
     }
 
