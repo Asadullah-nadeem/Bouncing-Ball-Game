@@ -6,11 +6,17 @@ public enum PowerUpType {
     X8(8, "/8xBall.png"),
     X16(16, "/16xBall.png");
 
+    HEART(0, "/heart.png", true);
+
+
     public final int multiplier;
     public final String imagePath;
+    public final boolean isLifeUp;
 
-    PowerUpType(int multiplier, String imagePath) {
+    PowerUpType(int multiplier, String imagePath, boolean isLifeUp) {
         this.multiplier = multiplier;
         this.imagePath = imagePath;
+        this.isLifeUp = isLifeUp;
+
     }
 }

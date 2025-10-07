@@ -25,5 +25,8 @@ public class GameConstants {
     public static final int POWERUP_SIZE = 30;
     public static final int POWERUP_SPEED = 2;
     public static final int POWERUP_DURATION_MS = 10000; // 10 seconds
+
+    // Game Rules
+    public static final int MAX_LIVES = 3;
 }
 
