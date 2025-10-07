@@ -25,7 +25,8 @@ public class GameConstants {
     public static final int POWERUP_SIZE = 25;
     public static final int POWERUP_SPEED = 3;
     public static final long POWERUP_DURATION_MS = 10000; // 10 seconds
-    public static final double HEART_DROP_CHANCE = 0.05; // 5% chance for a heart to drop
+    // 5% chance for a heart to drop
+    public static final double HEART_DROP_CHANCE = 0.05;
 
     // Game Rules
     public static final int MAX_LIVES = 3;

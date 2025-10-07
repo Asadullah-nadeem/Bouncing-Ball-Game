@@ -15,10 +15,7 @@ import java.util.Random;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
-/**
- * This class represents the panel where the game animation happens.
- * It handles drawing, game logic, user input, and state management.
- */
+
 public class GamePanel extends JPanel {
     // Game state
     private GameState gameState;
@@ -61,10 +58,7 @@ public class GamePanel extends JPanel {
     // Ball selection
     private int selectedBallIndex;
 
-    /**
-     * Constructor for the GamePanel.
-     * Sets up the panel, loads resources, and starts the game loop.
-     */
+
     public GamePanel() {
         setPreferredSize(new Dimension(GameConstants.PANEL_WIDTH, GameConstants.PANEL_HEIGHT));
         setBackground(Color.BLACK);
@@ -108,13 +102,13 @@ public class GamePanel extends JPanel {
     private void startGame() {
         score = 0;
         level = 1;
-        lives = 3;
+        lives = GameConstants.MAX_LIVES;
         resetBallAndPaddle();
 
         ballDx = (random.nextBoolean() ? 1 : -1) * GameConstants.INITIAL_BALL_SPEED;
         ballDy = -GameConstants.INITIAL_BALL_SPEED;
 
-        bricks = LevelGenerator.generateLevel(level, random);
+        bricks = LevelGenerator.generateLevel(level, lives, random);
         powerUps.clear();
         scoreMultiplier = 1;
         powerUpEndTime = 0;
@@ -167,11 +161,11 @@ public class GamePanel extends JPanel {
     }
 
     private void drawGame(Graphics g) {
-        // Draw paddle
+        // Paddle draw karo
         g.setColor(Color.BLUE);
         g.fillRect(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT);
 
-        // Draw ball
+        // Ball draw karo
         if (currentBallImage != null) {
             g.drawImage(currentBallImage, ballX, ballY, GameConstants.BALL_DIAMETER, GameConstants.BALL_DIAMETER, this);
         } else {
@@ -179,18 +173,15 @@ public class GamePanel extends JPanel {
             g.fillOval(ballX, ballY, GameConstants.BALL_DIAMETER, GameConstants.BALL_DIAMETER);
         }
 
-        // Draw bricks
+        // Bricks draw karo
         for (SpecialBrick brick : bricks) {
             if (brickImage != null) {
-                // To show damage on image bricks, you'd need separate "damaged" images.
-                // For simplicity, we'll draw a color overlay for damaged bricks.
                 g.drawImage(brickImage, brick.x, brick.y, brick.width, brick.height, this);
                 if (brick.getHealth() < 3) {
-                    g.setColor(new Color(0, 0, 0, 50 * (3 - brick.getHealth()))); // Darken based on damage
+                    g.setColor(new Color(0, 0, 0, 50 * (3 - brick.getHealth()))); // Damage dikhane ke liye darken karo
                     g.fillRect(brick.x, brick.y, brick.width, brick.height);
                 }
             } else {
-                // Fallback to drawing colored rectangles if images fail to load
                 switch (brick.getHealth()) {
                     case 1: g.setColor(Color.GREEN); break;
                     case 2: g.setColor(Color.ORANGE); break;
@@ -200,12 +191,12 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // Draw power-ups
+        // Power-ups draw karo
         for (PowerUp powerUp : powerUps) {
             g.drawImage(powerUp.image, powerUp.x, powerUp.y, powerUp.width, powerUp.height, this);
         }
 
-        // Draw HUD
+        // HUD (Score, Level, Lives) draw karo
         drawHUD(g);
     }
 
@@ -230,7 +221,7 @@ public class GamePanel extends JPanel {
         FontMetrics metrics = g.getFontMetrics();
         g.drawString(levelText, GameConstants.PANEL_WIDTH - metrics.stringWidth(levelText) - 10, 25);
 
-        // Draw active score multiplier
+        // Active score multiplier dikhao
         if (scoreMultiplier > 1) {
             g.setColor(Color.ORANGE);
             g.setFont(new Font("Arial", Font.BOLD, 24));
@@ -386,25 +377,31 @@ public class GamePanel extends JPanel {
     }
 
     private void updatePowerUps() {
-        // Check for power-up expiration
+        // Power-up expiration check karo
         if (scoreMultiplier > 1 && System.currentTimeMillis() > powerUpEndTime) {
             scoreMultiplier = 1;
         }
 
-        // Move and check for paddle collision
+        // Power-ups ko move karo aur paddle collision check karo
         powerUps.removeIf(powerUp -> {
             powerUp.move();
             if (powerUp.intersects(new Rectangle(paddleX, GameConstants.PANEL_HEIGHT - GameConstants.PADDLE_HEIGHT - 30, GameConstants.PADDLE_WIDTH, GameConstants.PADDLE_HEIGHT))) {
                 activatePowerUp(powerUp.type);
-                return true; // Remove from list
+                return true; // List se remove karo
             }
-            return powerUp.y > GameConstants.PANEL_HEIGHT; // Remove if it falls off-screen
+            return powerUp.y > GameConstants.PANEL_HEIGHT; // Agar screen se neeche chala jaaye toh remove karo
         });
     }
 
     private void activatePowerUp(PowerUpType type) {
-        scoreMultiplier = type.multiplier;
-        powerUpEndTime = System.currentTimeMillis() + GameConstants.POWERUP_DURATION_MS;
+        if (type.isLifeUp) {
+            if (lives < GameConstants.MAX_LIVES) {
+                lives++;
+            }
+        } else {
+            scoreMultiplier = type.multiplier;
+            powerUpEndTime = System.currentTimeMillis() + GameConstants.POWERUP_DURATION_MS;
+        }
     }
 
     private void checkCollisions() {
@@ -418,13 +415,13 @@ public class GamePanel extends JPanel {
         bricks.removeIf(brick -> {
             if (ballRect.intersects(brick)) {
                 ballDy = -ballDy;
-                // The hit() method now decides if the brick breaks
+                // hit() method ab decide karega ki brick tootegi ya nahi
                 if (brick.hit()) {
                     score += 10 * scoreMultiplier;
                     if (brick.powerUpType != null) {
                         powerUps.add(new PowerUp(brick.x, brick.y, brick.powerUpType, powerUpImages.get(brick.powerUpType)));
                     }
-                    return true; // Remove brick from list
+                    return true; // Brick ko list se remove karo
                 }
             }
             return false;
@@ -440,7 +437,7 @@ public class GamePanel extends JPanel {
                     ballDy += (ballDy > 0 ? 1 : -1);
                 }
             }
-            bricks = LevelGenerator.generateLevel(level, random);
+            bricks = LevelGenerator.generateLevel(level, lives, random);
             resetBallAndPaddle();
         }
     }
@@ -457,7 +454,7 @@ public class GamePanel extends JPanel {
             case PLAYING:
                 handlePlayingKeyPress(key);
                 if (key == KeyEvent.VK_P) {
-                    selectedPauseItem = 0; // Reset selection to "Resume"
+                    selectedPauseItem = 0; // Selection ko "Resume" par reset karo
                     gameState = GameState.PAUSED;
                 }
                 break;
@@ -512,7 +509,7 @@ public class GamePanel extends JPanel {
         if (key == KeyEvent.VK_DOWN) {
             selectedPauseItem = (selectedPauseItem + 1) % pauseMenuItems.length;
         }
-        if (key == KeyEvent.VK_P) { // Allow 'P' to resume directly
+        if (key == KeyEvent.VK_P) { // 'P' se direct resume
             gameState = GameState.PLAYING;
         }
         if (key == KeyEvent.VK_ENTER) {
@@ -526,7 +523,7 @@ public class GamePanel extends JPanel {
                         gameState = GameState.GAME_OVER;
                         lastScore = score;
                     } else {
-                        bricks = LevelGenerator.generateLevel(level, random);
+                        bricks = LevelGenerator.generateLevel(level, lives, random);
                         powerUps.clear();
                         scoreMultiplier = 1;
                         resetBallAndPaddle();
@@ -539,7 +536,7 @@ public class GamePanel extends JPanel {
             }
         }
         if (key == KeyEvent.VK_ESCAPE) {
-            gameState = GameState.PLAYING; // Also allow ESC to resume
+            gameState = GameState.PLAYING; // ESC se bhi resume
         }
     }
 
